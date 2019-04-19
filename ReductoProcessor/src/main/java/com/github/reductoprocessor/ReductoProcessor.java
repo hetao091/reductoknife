@@ -7,6 +7,7 @@ import java.io.Writer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -21,6 +22,7 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeMirror;
+import javax.tools.Diagnostic;
 import javax.tools.JavaFileObject;
 
 /**
@@ -33,7 +35,7 @@ import javax.tools.JavaFileObject;
  * =====================================
  */
 @AutoService(Processor.class)
-public class ReductoKnife extends AbstractProcessor {
+public class ReductoProcessor extends AbstractProcessor {
 
   // 拿到被注解的控件
   // 生成类文件去处理
@@ -41,7 +43,7 @@ public class ReductoKnife extends AbstractProcessor {
   // 生成Java文件
   Filer mFiler;
 
-  private Messager mErrorMessager;
+  private Messager mMessager;
 
 
   // 初始化
@@ -49,13 +51,13 @@ public class ReductoKnife extends AbstractProcessor {
   public synchronized void init(ProcessingEnvironment processingEnvironment) {
     super.init(processingEnvironment);
     mFiler = processingEnvironment.getFiler();
-    mErrorMessager = processingEnvironment.getMessager();
+    mMessager = processingEnvironment.getMessager();
   }
 
 
   @Override
   public Set<String> getSupportedAnnotationTypes() {
-    Set<String> mTypes = new HashSet<>();
+    HashSet<String> mTypes = new LinkedHashSet<>();
     // 拿到 注解名称
     mTypes.add(BindView.class.getCanonicalName());
     return mTypes;
@@ -64,7 +66,7 @@ public class ReductoKnife extends AbstractProcessor {
   // 注解处理器的版本
   @Override
   public SourceVersion getSupportedSourceVersion() {
-    return processingEnv.getSourceVersion();
+    return SourceVersion.latestSupported();
   }
 
   /**
@@ -74,6 +76,7 @@ public class ReductoKnife extends AbstractProcessor {
   public boolean process(
       Set<? extends TypeElement> set, RoundEnvironment roundEnvironment) {
 
+    log("----------------------processing...");
     //获取所有使用了BindView注解的成员变量也就是控件
     Set<? extends Element> elements = roundEnvironment.getElementsAnnotatedWith(BindView.class);
     /*
@@ -84,7 +87,7 @@ public class ReductoKnife extends AbstractProcessor {
     //
     for (Element element : elements) {
       //强转
-      VariableElement variableElement = (VariableElement) elements;
+      VariableElement variableElement = (VariableElement) element;
       //
       String activityClassName = getClassName(variableElement);
       //  结构化类中的成员变量
@@ -124,7 +127,7 @@ public class ReductoKnife extends AbstractProcessor {
                 + "){\n");
         // 生成方法
         writer.write("public void bind(" + packagesName + "." + name + " target){\n");
-        //findviewbyid
+        //
         for (VariableElement variableElement : list) {
           // 拿到控件类型
           TypeMirror typeMirror = variableElement.asType();
@@ -132,8 +135,8 @@ public class ReductoKnife extends AbstractProcessor {
           String variableName = variableElement.getSimpleName().toString();
           // 拿到控件ID->先拿到注解
           BindView bindView = variableElement.getAnnotation(BindView.class);
+          //
           int id = bindView.value();
-
           writer.write(
               "target." + variableName + " =(" + typeMirror + ")target.findViewById( " + id + "));\n");
         }
@@ -143,6 +146,7 @@ public class ReductoKnife extends AbstractProcessor {
       } finally {
         if (writer != null) {
           try {
+            writer.flush();
             writer.close();
           } catch (IOException e) {
             e.printStackTrace();
@@ -151,7 +155,7 @@ public class ReductoKnife extends AbstractProcessor {
       }
 
     }
-
+    log("------------------------process finish ...");
     return false;
   }
 
@@ -185,35 +189,7 @@ public class ReductoKnife extends AbstractProcessor {
     return packagesName;
   }
 
-//  /**
-//   * 创建Java代码
-//   */
-//  public String generateJavaCode() {
-//    StringBuilder builder = new StringBuilder();
-//    builder.append("package ").append(mPackageName).append(";\n\n");
-//    builder.append("import com.example.gavin.apt_library.*;\n");
-//    builder.append('\n');
-//    builder.append("public class ").append(mBindingClassName);
-//    builder.append(" {\n");
-//
-//    generateMethods(builder);
-//    builder.append('\n');
-//    builder.append("}\n");
-//    return builder.toString();
-//  }
-//
-//  /**
-//   * 加入Method
-//   */
-//  private void generateMethods(StringBuilder builder) {
-//    builder.append("public void bind(" + mTypeElement.getQualifiedName() + " host ) {\n");
-//    for (int id : mVariableElementMap.keySet()) {
-//      VariableElement element = mVariableElementMap.get(id);
-//      String name = element.getSimpleName().toString();
-//      String type = element.asType().toString();
-//      builder.append("host." + name).append(" = ");
-//      builder.append("(" + type + ")(((android.app.Activity)host).findViewById( " + id + "));\n");
-//    }
-//    builder.append("  }\n");
-//  }
+  private void log(String msg, Object... args) {
+    mMessager.printMessage(Diagnostic.Kind.NOTE, String.format(msg, args));
+  }
 }

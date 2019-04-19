@@ -18,6 +18,5 @@ import java.lang.annotation.Target;
 @Target(ElementType.FIELD)  // 定义作用域为成员变量
 @Retention(RetentionPolicy.SOURCE) //声明注解的生命周期
 public @interface BindView {
-
-  int value();
+   int value();
 }

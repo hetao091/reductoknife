@@ -11,10 +11,9 @@ import android.app.Activity;
  * revise   :
  * =====================================
  */
-public class ReductoKnife {
+class ReductoKnife {
 
   private ReductoKnife() {
-
   }
 
   /**
